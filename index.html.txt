@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clone Armor Trainer</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      margin: 16px;
+      line-height: 1.3;
+    }
+    h1 { font-size: 20px; margin-bottom: 6px; }
+    .meta { font-size: 13px; color: #555; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      padding: 10px 12px;
+      font-size: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background: #f7f7f7;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 14px;
+    }
+    .tag {
+      display: inline-block;
+      border: 1px solid #ccc;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      margin: 4px 6px 0 0;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>clone armor trainer</h1>
+  <div class="meta">Canon + Legends. Legends are labeled.</div>
+
+  <div class="row">
+    <button id="flash">Flashcard</button>
+    <button id="mcq">Multiple Choice</button>
+    <button id="type">Type Answer</button>
+    <button id="canon">Canon only</button>
+    <button id="both">Canon + Legends</button>
+  </div>
+
+  <div id="card" class="card"></div>
+
+<script>
+/* =========================
+   DATASET (starter + expandable)
+   ========================= */
+
+const ITEMS = [
+  {
+    id: "phase1",
+    continuity: "canon",
+    prompt: "Identify the armor phase: early Clone Wars standard issue.",
+    answer: "Phase I clone trooper armor",
+    alt: ["phase 1"],
+    tags: ["phase", "phase-i"],
+    notes: "Rounded helmet, early-war issue."
+  },
+  {
+    id: "phase2",
+    continuity: "canon",
+    prompt: "Identify the armor phase: late Clone Wars standard issue.",
+    answer: "Phase II clone trooper armor",
+    alt: ["phase 2"],
+    tags: ["phase", "phase-ii"],
+    notes: "Sleeker helmet, closer to stormtrooper design."
+  },
+  {
+    id: "arc",
+    continuity: "canon",
+    prompt: "Armor variant: ARC trooper kit with extra gear.",
+    answer: "ARC trooper armor",
+    alt: ["arc armor"],
+    tags: ["variant", "arc"],
+    notes: "Advanced Recon Commando loadout."
+  },
+  {
+    id: "arf",
+    continuity: "canon",
+    prompt: "Armor variant: light recon/scout clone armor.",
+    answer: "Clone scout trooper armor (ARF)",
+    alt: ["arf armor", "clone scout armor"],
+    tags: ["variant", "recon"],
+    notes: "Speed-focused recon kit."
+  },
+  {
+    id: "katarn_legends",
+    continuity: "legends",
+    prompt: "Commando armor variant from Legends material.",
+    answer: "Katarn-class commando armor",
+    alt: ["katarn armor"],
+    tags: ["variant", "commando"],
+    notes: "Republic Commando-era depiction."
+  },
+  {
+    id: "501st",
+    continuity: "canon",
+    prompt: "Unit identification: blue clone armor markings.",
+    answer: "501st Legion",
+    alt: ["501st"],
+    tags: ["unit", "blue"],
+    notes: "Anakin Skywalker’s legion."
+  },
+  {
+    id: "212th",
+    continuity: "canon",
+    prompt: "Unit identification: orange clone armor markings.",
+    answer: "212th Attack Battalion",
+    alt: ["212th"],
+    tags: ["unit", "orange"],
+    notes: "Obi-Wan Kenobi / Cody."
+  }
+];
+
+/* =========================
+   APP LOGIC
+   ========================= */
+
+let mode = "flash";
+let continuityMode = "both";
+let current = null;
+
+function formatAnswer(it) {
+  return it.continuity === "legends"
+    ? it.answer + " (Legends)"
+    : it.answer;
+}
+
+function activeItems() {
+  return continuityMode === "canon"
+    ? ITEMS.filter(i => i.continuity !== "legends")
+    : ITEMS;
+}
+
+function pick() {
+  const list = activeItems();
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function render() {
+  current = pick();
+  const card = document.getElementById("card");
+  const tags = current.tags.map(t => `<span class="tag">${t}</span>`).join("");
+
+  if (mode === "flash") {
+    card.innerHTML = `
+      <div>${current.prompt}</div>
+      <button id="show">Show answer</button>
+      <div>${tags}</div>
+    `;
+    document.getElementById("show").onclick = () => {
+      card.innerHTML = `
+        <b>${formatAnswer(current)}</b>
+        <p>${current.notes || ""}</p>
+        <button onclick="render()">Next</button>
+      `;
+    };
+  }
+
+  if (mode === "type") {
+    card.innerHTML = `
+      <div>${current.prompt}</div>
+      <input id="ans" placeholder="Type answer" />
+      <button id="submit">Submit</button>
+      <div>${tags}</div>
+    `;
+    document.getElementById("submit").onclick = () => {
+      const v = document.getElementById("ans").value.toLowerCase();
+      const ok = [current.answer, ...(current.alt||[])]
+        .map(a => a.toLowerCase())
+        .includes(v);
+      alert(ok ? "Correct" : formatAnswer(current));
+      render();
+    };
+  }
+
+  if (mode === "mcq") {
+    const choices = activeItems().sort(() => 0.5 - Math.random()).slice(0, 3);
+    if (!choices.includes(current)) choices[0] = current;
+    card.innerHTML = `
+      <div>${current.prompt}</div>
+      ${choices.map(c =>
+        `<button class="choice">${formatAnswer(c)}</button>`
+      ).join("")}
+      <div>${tags}</div>
+    `;
+    document.querySelectorAll(".choice").forEach(btn => {
+      btn.onclick = () => {
+        alert(btn.textContent === formatAnswer(current) ? "Correct" : formatAnswer(current));
+        render();
+      };
+    });
+  }
+}
+
+document.getElementById("flash").onclick = () => { mode = "flash"; render(); };
+document.getElementById("mcq").onclick = () => { mode = "mcq"; render(); };
+document.getElementById("type").onclick = () => { mode = "type"; render(); };
+document.getElementById("canon").onclick = () => { continuityMode = "canon"; render(); };
+document.getElementById("both").onclick = () => { continuityMode = "both"; render(); };
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+
+render();
+</script>
+</body>
+</html>
